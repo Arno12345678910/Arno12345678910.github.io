@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 1px solid white;
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Snake Game</h1>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Grid settings
+        const gridSize = 20; // Number of cells per row/column
+        const boxSize = 20; // Size of each square in pixels
+        canvas.width = gridSize * boxSize;
+        canvas.height = gridSize * boxSize;
+
+        // Game state
+        let snake = [{ x: 10, y: 10 }]; // Start in the middle of the grid
+        let direction = "RIGHT"; // Start moving to the right
+        let food = generateFood();
+        let bullets = []; // List to hold bullets
+        let speed = 200; // Initial speed (milliseconds per frame)
+        let gameInterval;
+
+        // Generate food in a location not occupied by the snake or bullets
+        function generateFood() {
+            let foodPosition;
+            do {
+                foodPosition = {
+                    x: Math.floor(Math.random() * gridSize),
+                    y: Math.floor(Math.random() * gridSize),
+                };
+            } while (isOccupied(foodPosition));
+            return foodPosition;
+        }
+
+        // Generate a new bullet (kogel) and add it to bullets array
+        function generateBullet() {
+            let direction = Math.random() > 0.5 ? "HORIZONTAL" : "VERTICAL"; // Random direction
+            let x, y;
+            
+            // Spawn bullets either at random horizontal or vertical edge
+            if (direction === "HORIZONTAL") {
+                x = Math.random() > 0.5 ? 0 : gridSize - 1;
+                y = Math.floor(Math.random() * gridSize);
+            } else {
+                x = Math.floor(Math.random() * gridSize);
+                y = Math.random() > 0.5 ? 0 : gridSize - 1;
+            }
+
+            bullets.push({ x, y, direction });
+        }
+
+        // Check if a position is occupied by the snake or bullets
+        function isOccupied(position) {
+            return (
+                snake.some(segment => segment.x === position.x && segment.y === position.y) ||
+                bullets.some(bullet => bullet.x === position.x && bullet.y === position.y) ||
+                (food.x === position.x && food.y === position.y)
+            );
+        }
+
+        // Key listeners to change direction
+        document.addEventListener("keydown", changeDirection);
+
+        function changeDirection(event) {
+            const key = event.keyCode;
+            if (key === 37 && direction !== "RIGHT") direction = "LEFT";
+            else if (key === 38 && direction !== "DOWN") direction = "UP";
+            else if (key === 39 && direction !== "LEFT") direction = "RIGHT";
+            else if (key === 40 && direction !== "UP") direction = "DOWN";
+        }
+
+        // Game loop
+        function gameLoop() {
+            // Move Snake
+            let head = { ...snake[0] };
+            if (direction === "LEFT") head.x--;
+            if (direction === "UP") head.y--;
+            if (direction === "RIGHT") head.x++;
+            if (direction === "DOWN") head.y++;
+
+            // Check if snake hits the wall
+            if (
+                head.x < 0 ||
+                head.y < 0 ||
+                head.x >= gridSize ||
+                head.y >= gridSize ||
+                isCollision(head, snake) ||
+                isCollision(head, bullets)
+            ) {
+                alert("Game Over!");
+                clearInterval(gameInterval);
+                return;
+            }
+
+            // Check food collision
+            if (head.x === food.x && head.y === food.y) {
+                food = generateFood();
+                generateBullet(); // Add a new bullet
+                increaseSpeed(); // Speed up the game
+            } else {
+                snake.pop(); // Remove the tail
+            }
+
+            snake.unshift(head); // Add the new head
+
+            // Move bullets
+            moveBullets();
+
+            // Draw everything
+            draw();
+        }
+
+        function isCollision(head, array) {
+            return array.some(item => item.x === head.x && item.y === head.y);
+        }
+
+        // Move bullets across the canvas
+        function moveBullets() {
+            bullets.forEach(bullet => {
+                if (bullet.direction === "HORIZONTAL") {
+                    bullet.x += (bullet.x === 0 ? 1 : -1); // Move towards right or left edge
+                } else {
+                    bullet.y += (bullet.y === 0 ? 1 : -1); // Move towards top or bottom edge
+                }
+            });
+        }
+
+        // Draw everything on the canvas
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Food
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x * boxSize, food.y * boxSize, boxSize, boxSize);
+
+            // Draw Bullets (Kogels)
+            ctx.fillStyle = "yellow";
+            bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x * boxSize, bullet.y * boxSize, boxSize, boxSize);
+            });
+
+            // Draw Snake
+            ctx.fillStyle = "lime";
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x * boxSize, segment.y * boxSize, boxSize, boxSize);
+            });
+        }
+
+        // Increase speed after eating food
+        function increaseSpeed() {
+            speed = Math.max(50, speed - 10); // Don't let speed go below 50ms
+            clearInterval(gameInterval); // Clear current interval
+            gameInterval = setInterval(gameLoop, speed); // Restart with updated speed
+        }
+
+        // Start the game
+        function startGame() {
+            gameInterval = setInterval(gameLoop, speed);
+        }
+
+        startGame();
+    </script>
+</body>
+</html>
